@@ -92,6 +92,9 @@ defmodule ChordNode do
     # GenServer.cast(new_pid, :stablize)
   end
 
+  @doc """
+    This method sends the message to each node to search for keys
+  """ 
   def start_sending(pid, num, max) do
     GenServer.cast(pid, {:send_messages, num, max})
   end
@@ -177,6 +180,9 @@ defmodule ChordNode do
     {:noreply, new_state}
   end
 
+  @doc """
+    This method is used to update the finger table for each node
+  """
   def handle_cast(:fix_fingers, state) do
     list = state.finger_table
 
@@ -313,6 +319,9 @@ defmodule ChordNode do
 
   ###################################################################################
 
+  @doc """
+    This handle_cast method is used to inform a node to find the messages from the Chord 
+  """
   def handle_cast({:forward_message, from, num, req_key, hop_count, forw_pid}, state) do
     new_state =
       if(Enum.member?(state.keys, req_key)) do
@@ -376,6 +385,9 @@ defmodule ChordNode do
     {:noreply, new_state}
   end
 
+  @doc """
+    This handle_cast method is used to inform a node to find the messages from the Chord 
+  """
   def handle_cast({:send_messages, num_messages, max_count}, state) do
     state = state |> Map.update!(:number_of_messages, fn _ -> num_messages end)
 

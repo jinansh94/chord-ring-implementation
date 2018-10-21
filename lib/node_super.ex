@@ -55,6 +55,9 @@ defmodule NodeSuper do
     end)
   end
 
+  @doc """
+    This method is used to start the sending of messages to find the key in the network
+  """
   def send_messages(n, max) do
     list = DynamicSupervisor.which_children(:i_am_super)
 
@@ -65,6 +68,9 @@ defmodule NodeSuper do
     end)
   end
 
+  @doc """
+    This method is used to populate the symbol table of all the nodes after the Chord Ring Netwrok is formed
+  """
   def fix_all_fingers() do
     list = DynamicSupervisor.which_children(:i_am_super)
 
