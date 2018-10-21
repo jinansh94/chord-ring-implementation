@@ -562,4 +562,76 @@ defmodule ChordNode do
     IO.inspect(state.finger_table)
     {:reply, :ok, state}
   end
+
+  ##################################################################################################################################
+  ## New Finger Table implementation Jinansh #######################################################################################
+  ##################################################################################################################################
+  
+  def handle_cast({:update_fingertable, id, key_pid}, state) do
+    new_state = state |> Map.update!(:fingure_table,id,pid)
+
+    {:noreply,new_state}
+  end
+
+  def handle_cast({:get_succ_for_fingertable, id, node_pid, max_search}, state) do
+    if max_search >= 1500
+        GenServer.cast(node_pid,{:update_fingertable, id, "It's not present"})
+    else 
+      if (Enum.member?(state.keys,id)) do
+        GenServer.cast(node_pid,{:update_fingertable, id, self()})
+      else 
+        succ = state.successor
+        GenServer.cast(succ,{:get_succ_for_fingertable, id, node_pid, max_search+1})
+      end 
+  end 
+
+  def handle_cast({:fix_fingers_new, max_search}, state) do
+    list = Map.to_list(fingureTableList);
+
+    [{head_id, head_pid} | tail] = list
+	
+    pid =
+      if(head_pid == nil) do
+        state.successor
+      else
+        head_pid
+      end
+	
+    new_state = state |> Map.update!(:fingure_table,head_id,pid)
+
+    answer = fix_fingers_new(tail, pid, state.keys, self(), max_search)
+
+    new_state = state |> Map.update!(:fingure_table,head_id,pid)
+    {:noreply, new_state}
+  end
+
+  defp fix_fingers_new(_list, _prev_pid, _key_list, _node_pid, _max_search) when list == [] do
+    :ok
+  end
+
+  defp fix_fingers_new(list, prev_pid, key_list, node_pid, max_search) do
+    [{head_id, head_pid} | tail] = list
+
+    pid =
+      if(head_pid == nil) do
+        prev_pid
+      else
+        head_pid
+      end
+
+    succ =
+      if(Enum.member?(key_list, head_id)) do
+        GenServer.cast(node_pid,{:update_fingertable, id, nil})
+      else
+        GenServer.cast(prev_pid, {:get_succ_for_fingertable, head_id, node_pid, max_search})
+      end
+
+    fix_fingers(tail, pid, key_list)
+  end
+
+
+
+
+
+
 end

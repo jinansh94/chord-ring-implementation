@@ -85,3 +85,23 @@ defmodule NodeSuper do
     end)
   end
 end
+
+
+  ##################################################################################################################################
+  ## New Finger Table implementation Jinansh #######################################################################################
+  ##################################################################################################################################
+
+  def fix_all_fingers() do
+    list = DynamicSupervisor.which_children(:i_am_super)
+
+    list
+    |> Enum.each(fn item ->
+      {id, pid, _, _} = item
+      #    IO.puts("Fixing fingers for #{id}")
+      #    IO.inspect(id)
+      GenServer.cast(pid, {:fix_fingers_new, max_search})
+      :timer.sleep(10)
+      #    IO.puts("Fixed fingers for #{id}")
+    end)
+  end
+end
