@@ -1,10 +1,13 @@
 defmodule ChordNode do
   use GenServer
 
+ @moduledoc """
+  Provides method for creating nodes, joining new nodes
+ """
+
   @doc """
-
+    Enables the finger table values for a new node with keys and corresponding nodes will be nil
   """
-
   def get_empty_values(id, mul, n) when id + mul > n do
     []
   end
@@ -13,6 +16,9 @@ defmodule ChordNode do
     [{id + mul, nil} | get_empty_values(id, mul * 2, n)]
   end
 
+  @doc """
+    Starts the node with initial state that contains parent pid, id and finger table
+  """
   def start_link(id, max, parent) do
     finger = get_empty_values(id, 1, max)
 
@@ -35,6 +41,9 @@ defmodule ChordNode do
     :ok = GenServer.call(pid, :print_keys)
   end
 
+  @doc """
+    This method is used by the join method to return a pid of an exciting node in the netwrok
+  """
   def get_node(id) do
     pid = NodeSuper.get_an_active_child_id()
 
@@ -48,6 +57,9 @@ defmodule ChordNode do
     new_pid
   end
 
+  @doc """
+    This is method is used to join any other new nodes that to our main network 
+  """
   def join(id, new_pid) do
     #  id = GenServer.call(new_pid, :get_id)
     # IO.puts("new node joined")
@@ -67,6 +79,9 @@ defmodule ChordNode do
     #    GenServer.cast(new_pid, :stablize)
   end
 
+  @doc """
+    Creates the first node of the Chord Ring with all the keys assigned to that node and successor and predecessor is set to itself
+  """
   def create(new_pid, num_keys) do
     # id = GenServer.call(new_pid, :get_id)
     keys = Enum.to_list(1..num_keys)
@@ -179,6 +194,12 @@ defmodule ChordNode do
     {:noreply, state}
   end
 
+  @doc """
+    This handle_cast method is the stablize method for the Chord Ring Netwrok.
+
+    It basically checks whether it's adjusts it's successor to a right value if there is any new joined node in the network
+    It also adjusts the predecessor of a new formed node
+  """
   def handle_cast(:stablize, state) do
     # IO.puts("stablizing #{state.id}")
     # IO.inspect(self())
@@ -194,6 +215,7 @@ defmodule ChordNode do
 
     {succ_pid, new_id} =
       cond do
+        #Jinansh Understand this from Ashwin please...............................................
         pid == nil and suc_pid != self() ->
           GenServer.cast(suc_pid, {:yo_im_ur_new_predecessor, self(), state.id})
           {suc_pid, state.succ_id}
@@ -250,6 +272,9 @@ defmodule ChordNode do
     end
   """
 
+  @doc """
+    This handle_cast method is used to remove the keys that it's predecessor have.
+  """
   def handle_cast({:delete_these_keys, keys_to_remove}, state) do
     state_keys = state.keys
 
@@ -260,6 +285,12 @@ defmodule ChordNode do
     {:noreply, state}
   end
 
+  @doc """
+    This handle_cast method is used to inform a node to change it's predecessor pid and id.
+
+    It also informs it's successor to remove keys it already possesses
+    It also informs it's predecessor to stabilize i.e. change it's successor if any new node has joind the network
+  """
   def handle_cast({:new_predecessor, pred_pid, pred_id}, state) do
     pred = state.predecessor
 
@@ -387,6 +418,12 @@ defmodule ChordNode do
     end
   """
 
+  @doc """
+    This handle_call method is used to join the new node in the network.
+
+    It updtaes the successor of the new node from nil to actual successor 
+    It also informs it's new successor to update it's predecessor to itself that call internally also handles the stabilization of already exciting network
+  """
   def handle_call({:new_successor, suc_pid}, _from, state) do
     state =
       state
@@ -406,11 +443,16 @@ defmodule ChordNode do
     {:reply, :ok, state}
   end
 
+  @doc """
+    This handle_call method is used to update the predecessor of a node in most cases it will be the new node that has join the network.
+  """
   def handle_call({:yo_im_ur_new_predecessor_old, pid, id}, _from, state) do
     GenServer.cast(state.successor, {:delete_these_keys, state.keys})
 
     new_state =
+      #Jinansh ask Ashwin when is this case true.............................................................................................
       unless state.predecessor == nil do
+        #Jinansh ask Ashwin where is thing used.............................................................................................
         pred_id = GenServer.call(state.predecessor, :get_id)
 
         new_pred =
@@ -429,10 +471,16 @@ defmodule ChordNode do
     {:reply, :ok, new_state}
   end
 
+  @doc """
+    This handle_call method is used to get the predecessor for a particular node
+  """
   def handle_call(:yo_give_me_your_predecessor, _from, state) do
     {:reply, {state.predecessor, state.pred_id}, state}
   end
 
+  @doc """
+    This handle_call method is used to get the predecessor for a particular node
+  """
   def handle_call({:give_me_keys, id}, _from, state) do
     keys = state.keys
     keys = Enum.sort(keys)
@@ -452,6 +500,11 @@ defmodule ChordNode do
     {:reply, {not_mine2, state.id}, state}
   end
 
+  @doc """
+    This method is used in the when a new node is joined in the network
+    
+    It finds the pid(place) of the exciting node where the new node can join in the network
+  """
   def handle_call({:get_successor, id}, _from, state) do
     # IO.puts("want successor for #{id}")
     # IO.inspect(state.keys)
@@ -472,6 +525,10 @@ defmodule ChordNode do
   def handle_call(:get_id_old, _from, state) do
     {:reply, state.id, state}
   end
+
+  @doc """
+    This is a Genserver call mathod for the first node that is being created as part of our Chord Ring Formation
+  """
 
   def handle_call({:initial_values, suc_pid, pred_pid, keys}, _from, state) do
     id = state.id

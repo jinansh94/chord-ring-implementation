@@ -1,6 +1,7 @@
 defmodule Chord do
+
   @moduledoc """
-  Documentation for Chord.
+    Provides the main and other method to implement the Chord Ring Nerwork.
   """
 
   def receive_messages(total, count) do
@@ -11,6 +12,9 @@ defmodule Chord do
     end
   end
 
+ @doc """
+    This method is used to implement other nodes except the first node in our Chord Ring network  
+  """
   def start_nodes(list, _n, _count) when list == [] do
     :ok
   end
@@ -28,6 +32,9 @@ defmodule Chord do
     start_nodes(tail, n, count - 1)
   end
 
+  @doc """
+    This is the main method for our Chord Ring implementation. 
+  """
   def main(n, mess) do
     NodeSuper.start_link()
     list = Enum.to_list(1..n |> Enum.shuffle())

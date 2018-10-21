@@ -1,7 +1,9 @@
 defmodule NodeStruct do
+
   @doc """
-  The basic struct for the node GenServer.
+    This is the basic struct for the implementation of a state in node GenServer.
   """
+  
   defstruct [
     :id,
     :successor,

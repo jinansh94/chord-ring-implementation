@@ -1,4 +1,12 @@
 defmodule NodeSuper do
+
+ @moduledoc """
+  Provides different methods for handling the Dynamic Supervisor for different GenServers in our code.
+ """
+
+  @doc """
+    Starts the Dynamic Supervisor with startegy and a unique id for this supervisor
+  """
   def start_link() do
     DynamicSupervisor.start_link(strategy: :one_for_one, name: :i_am_super)
   end
@@ -6,7 +14,6 @@ defmodule NodeSuper do
   # def init(strategy) do
   #    DynamicSupervisor.init(strategy)
   #  end
-
   def start_child(id, n, parent) do
     spec = %{id: id, start: {ChordNode, :start_link, [id, n, parent]}}
     #  IO.inspect(spec)
@@ -14,6 +21,9 @@ defmodule NodeSuper do
     child
   end
 
+  @doc """
+    This method is used in the ChordNode module to gent a random pid of a node 
+  """
   def get_an_active_child_id() do
     list = DynamicSupervisor.which_children(:i_am_super)
     {_, pid, _, _} = list |> Enum.random()
