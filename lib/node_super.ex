@@ -90,7 +90,6 @@ defmodule NodeSuper do
   ##################################################################################################################################
 
   def fix_all_fingers_new(max_search) do
-    IO.puts("Coming into node_super yay!!!")
     list = DynamicSupervisor.which_children(:i_am_super)
 
     list
@@ -99,8 +98,20 @@ defmodule NodeSuper do
       #    IO.puts("Fixing fingers for #{id}")
       #    IO.inspect(id)
       GenServer.cast(pid, {:fix_fingers_new, max_search})
-      :timer.sleep(10)
+      #:timer.sleep(10)
       #    IO.puts("Fixed fingers for #{id}")
     end)
+  end
+
+  def fix_supervisorList() do
+    list = DynamicSupervisor.which_children(:i_am_super)
+
+    list
+    |> Enum.each(fn item ->
+      {id, pid, _, _} = item
+      GenServer.cast(pid, {:fix_superVisorList})
+      :timer.sleep(10)
+    end)
+    :timer.sleep(20)
   end
 end
