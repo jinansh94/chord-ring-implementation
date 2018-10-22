@@ -82,16 +82,15 @@ defmodule NodeSuper do
       GenServer.cast(pid, :fix_fingers)
       :timer.sleep(10)
       #    IO.puts("Fixed fingers for #{id}")
-    end)
+      end)
   end
-end
-
 
   ##################################################################################################################################
   ## New Finger Table implementation Jinansh #######################################################################################
   ##################################################################################################################################
 
-  def fix_all_fingers() do
+  def fix_all_fingers_new(max_search) do
+    IO.puts("Coming into node_super yay!!!")
     list = DynamicSupervisor.which_children(:i_am_super)
 
     list

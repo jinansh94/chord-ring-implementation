@@ -29,7 +29,29 @@ defmodule ChordNode do
         finger
       end
 
+    ##################################################################################################################################
+    ## New Finger Table implementation Jinansh #######################################################################################
+    ##################################################################################################################################
+
+    fingerTablePopulate = %{}
+    finger_new = get_empty_values_new(id, 1, max, fingerTablePopulate)
+
+    ##################################################################################################################################
+    ## New Finger Table implementation Jinansh End ###################################################################################
+    ##################################################################################################################################
+
     state = %NodeStruct{id: id, keys: [], finger_table: fingers, parent_pid: parent}
+
+    ##################################################################################################################################
+    ## New Finger Table implementation Jinansh #######################################################################################
+    ##################################################################################################################################
+
+    state = %NodeStruct{id: id, keys: [], finger_table: fingers, parent_pid: parent, fingure_table_new: finger_new}
+
+    ##################################################################################################################################
+    ## New Finger Table implementation Jinansh End ###################################################################################
+    ##################################################################################################################################
+
     GenServer.start_link(__MODULE__, state)
   end
 
@@ -568,26 +590,41 @@ defmodule ChordNode do
   ##################################################################################################################################
   
   def handle_cast({:update_fingertable, id, key_pid}, state) do
-    new_state = state |> Map.update!(:fingure_table,id,pid)
+    IO.puts("coming into handle cast to update values yay!!!!")
+    fingerTableOld = state.fingure_table_new
+    fingerTableUpdate = Map.update!(fingerTableOld, id, fn _ -> key_pid end)
+
+    new_state = state |> Map.update!(:fingure_table_new, fn _-> fingerTableUpdate end)
+
+    IO.inspect(new_state)
 
     {:noreply,new_state}
   end
 
-  def handle_cast({:get_succ_for_fingertable, id, node_pid, max_search}, state) do
-    if max_search >= 1500
-        GenServer.cast(node_pid,{:update_fingertable, id, "It's not present"})
+  def handle_cast({:get_succ_for_fingertable, id, node_pid, max_search, count}, state) do
+    IO.puts("coming into get succ for fingertable !!!!")
+    if count >= max_search do
+        GenServer.cast(node_pid,{:update_fingertable, id, nil})
     else 
+      IO.puts("coming into get succ for fingertable elseeeeeeeeeeeeeeeeeee!!!!")
       if (Enum.member?(state.keys,id)) do
+        IO.puts("coming into get succ for fingertable elseeeeeee iffffffffffffffff!!!!")
         GenServer.cast(node_pid,{:update_fingertable, id, self()})
       else 
+        IO.puts("coming into get succ for fingertable elseeeeeee elsseeeeeeeeeeeeeeeeee!!!!")
         succ = state.successor
-        GenServer.cast(succ,{:get_succ_for_fingertable, id, node_pid, max_search+1})
+        GenServer.cast(succ,{:get_succ_for_fingertable, id, node_pid, max_search, count+1})
       end 
+    end  
+    IO.puts("coming into get succ for fingertable enddddddddddddddd!!!!")
+    {:noreply,state}
   end 
 
   def handle_cast({:fix_fingers_new, max_search}, state) do
-    list = Map.to_list(fingureTableList);
-
+    IO.puts("coming into handle cast yay!!!!")
+    IO.puts("coming into handle cast 111111111111111111111!!!!")
+    list = Map.to_list(state.fingure_table_new)
+    IO.puts("coming into handle cast 222222222!!!!")
     [{head_id, head_pid} | tail] = list
 	
     pid =
@@ -596,21 +633,37 @@ defmodule ChordNode do
       else
         head_pid
       end
-	
-    new_state = state |> Map.update!(:fingure_table,head_id,pid)
+    
+    IO.puts("coming into handle cast 333333333333333!!!!")  
 
-    answer = fix_fingers_new(tail, pid, state.keys, self(), max_search)
+    fingerTableOld = state.fingure_table_new
 
-    new_state = state |> Map.update!(:fingure_table,head_id,pid)
+    IO.puts("coming into handle cast 4444444444444444444444!!!!") 
+    IO.inspect(fingerTableOld)  
+    IO.puts("head_id #{head_id}")
+
+    fingerTableUpdate = Map.update!(fingerTableOld, head_id, fn _ -> pid end)
+
+    IO.puts("coming into handle cast 55555555555555555555555!!!!")  
+  
+    new_state = state |> Map.update!(:fingure_table_new, fn _-> fingerTableUpdate end)
+
+    IO.puts("coming into handle cast 6666666666666666666666!!!!")  
+
+    fix_fingers_new(tail, pid, state.keys, self(), max_search)
     {:noreply, new_state}
   end
 
-  defp fix_fingers_new(_list, _prev_pid, _key_list, _node_pid, _max_search) when list == [] do
-    :ok
+  defp fix_fingers_new(list, _prev_pid, _key_list, _node_pid, _max_search) when list == [] do
+    IO.puts("coming into fix fingers new method yay khaleeeeeeee!!!!")
+  
   end
 
   defp fix_fingers_new(list, prev_pid, key_list, node_pid, max_search) do
+    IO.puts("coming into fix fingers new method yay!!!!")
     [{head_id, head_pid} | tail] = list
+
+    IO.puts("coming into fix fingers new method yay11111111111111111111111111111!!!!") 
 
     pid =
       if(head_pid == nil) do
@@ -619,19 +672,26 @@ defmodule ChordNode do
         head_pid
       end
 
-    succ =
-      if(Enum.member?(key_list, head_id)) do
-        GenServer.cast(node_pid,{:update_fingertable, id, nil})
-      else
-        GenServer.cast(prev_pid, {:get_succ_for_fingertable, head_id, node_pid, max_search})
-      end
+    IO.puts("coming into fix fingers new method yay2222222222222222222222222222!!!!")  
 
-    fix_fingers(tail, pid, key_list)
+    if(Enum.member?(key_list, head_id)) do
+      GenServer.cast(node_pid,{:update_fingertable, head_id, nil})
+    else
+      GenServer.cast(prev_pid, {:get_succ_for_fingertable, head_id, node_pid, max_search, 0})
+    end
+
+    IO.puts("coming into fix fingers new method yay3333333333333333333333!!!!")  
+
+    fix_fingers_new(tail, pid, key_list,node_pid,max_search)
   end
 
 
+  def get_empty_values_new(id, mul, n, fingerTablePopulate) when id + mul > n do
+    fingerTablePopulate
+  end
 
-
-
-
+  def get_empty_values_new(id, mul, n, fingerTablePopulate) do
+    fingerTablePopulate = Map.put_new(fingerTablePopulate, id + mul, nil)
+    get_empty_values_new(id, mul * 2, n, fingerTablePopulate)
+  end
 end
