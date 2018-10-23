@@ -23,13 +23,19 @@ defmodule Chord do
     [head | tail] = list
     child = NodeSuper.start_child(head, n, self())
     ChordNode.join(head, child)
-    :timer.sleep(50)
+
+    cond do
+      n/count >=10 -> :timer.sleep(50)
+      n/count >=4 -> :timer.sleep(1)
+      true -> nil
+    end
     # NodeSuper.stablize_all_children()
     # IO.gets("")
     #  NodeSuper.check_all_children()
     # IO.gets("")
-    #    IO.puts(count)
-    start_nodes(tail, n, count - 1)
+    #IO.puts(count)
+
+    start_nodes(tail, n, count + 1)
   end
 
   @doc """
@@ -44,15 +50,19 @@ defmodule Chord do
     child = NodeSuper.start_child(head, n, self())
     ChordNode.create(child, n)
     # Node.spawn_link(Node.self(), NodeSuper.stablize_all_children())
-    start_nodes(tail, n, n)
-    IO.puts("started!!")
+    start_nodes(tail, n, 1)
+    #IO.puts("started!!")
     #NodeSuper.fix_all_fingers()
     NodeSuper.fix_all_fingers_new(n)
     NodeSuper.fix_supervisorList()
     :timer.sleep(20)
-    IO.puts("fixed!!")
+    #IO.puts("fixed!!")
     #  NodeSuper.check_all_children()
     NodeSuper.send_messages(mess, n)
     receive_messages(0, 0)
+
+    # for runninge the stabilize, fix_fingers and fix_successorlist continuosly for live system or for fault tolerance 
+    # uncomment the below line
+    _temppid = spawn_link(fn -> NodeSuper.repeatProcess(n) end)
   end
 end

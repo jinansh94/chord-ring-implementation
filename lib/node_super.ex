@@ -15,7 +15,7 @@ defmodule NodeSuper do
   #    DynamicSupervisor.init(strategy)
   #  end
   def start_child(id, n, parent) do
-    spec = %{id: id, start: {ChordNode, :start_link, [id, n, parent]}}
+    spec = %{id: id, restart: :transient, start: {ChordNode, :start_link, [id, n, parent]}}
     #  IO.inspect(spec)
     {:ok, child} = DynamicSupervisor.start_child(:i_am_super, spec)
     child
@@ -103,6 +103,7 @@ defmodule NodeSuper do
     end)
   end
 
+  
   def fix_supervisorList() do
     list = DynamicSupervisor.which_children(:i_am_super)
 
@@ -110,7 +111,24 @@ defmodule NodeSuper do
     |> Enum.each(fn item ->
       {id, pid, _, _} = item
       GenServer.cast(pid, {:fix_superVisorList})
-      :timer.sleep(5)
+      :timer.sleep(1)
     end)
   end
+
+  def repeatProcess(max_search) do
+    list = DynamicSupervisor.which_children(:i_am_super)
+
+    list
+    |> Enum.each(fn item ->
+      {id, pid, _, _} = item
+      GenServer.cast(pid, :stablize)
+      GenServer.cast(pid, {:fix_fingers_new, max_search})
+      GenServer.cast(pid, {:fix_superVisorList})
+      :timer.sleep(5)
+    end)
+
+    :timer.sleep(5000)
+    repeatProcess(max_search)
+  end
+
 end

@@ -136,6 +136,7 @@ defmodule ChordNode do
     [{head_id, head_pid} | tail] = list
 
     cond do
+      head_pid == nil -> prev_pid
       head_id == id -> head_pid
       head_id > id -> prev_pid
       true -> find_succ_after(id, tail, head_pid)
@@ -150,6 +151,7 @@ defmodule ChordNode do
     [{head_id, head_pid} | tail] = list
 
     cond do
+      head_pid == nil -> prev_pid
       head_id == id -> head_pid
       head_id < id -> prev_pid
       true -> find_succ_before(id, tail, head_pid)
@@ -365,11 +367,11 @@ defmodule ChordNode do
   def handle_cast({:forward_reply, from, num, key, hop_count}, state) do
     new_state =
       if(state.id == from) do
-        #        IO.puts(
-        #          "#{state.id} messages remaining #{state.number_of_messages - 1}, Hop count for #{key} is #{
-        #            hop_count
-        #          }"
-        #        )
+                #IO.puts(
+                #  "#{state.id} messages remaining #{state.number_of_messages - 1}, Hop count for #{key} is #{
+                #    hop_count
+                #  }"
+                #)
         send(state.parent_pid, {:hop_count, hop_count})
 
         state |> Map.update!(:number_of_messages, fn x -> x - 1 end)
@@ -497,7 +499,7 @@ defmodule ChordNode do
     {:reply, :ok, state}
   end
 
-  def handle_call(:print_keys, _from, state) do
+  def handle_call(:print_keys_unused, _from, state) do
     id = state.id
     IO.puts("Printing #{id}")
     IO.inspect(state.finger_table)
@@ -658,6 +660,34 @@ defmodule ChordNode do
 
   def handle_call({:getNextSuccSupervisorList},_from,state) do
     {:reply, state.supervisorList , state}
+  end
+
+  def handle_cast({:please_die,max_search}, state) do
+    GenServer.cast(state.successor,{:vol_give,state.keys,state.predecessor,state.pred_id})
+    GenServer.cast(state.predecessor,{:vol_give_pred,state.successor,state.succ_id,max_search})
+
+    {:stop, :normal, state}
+  end
+
+  def handle_cast({:vol_give,key,pred_pid,pred_id}, state) do
+    old_list = state.keys
+    new_list = old_list ++ key
+    state = state |> Map.update!(:predecessor, fn _x -> pred_pid end)
+                  |> Map.update!(:keys, fn _x -> new_list end)
+                  |> Map.update!(:pred_id, fn _x -> pred_id end)
+
+    {:noreply, state}
+  end
+
+  def handle_cast({:vol_give_pred,succ_pid,succ_id,max_search}, state) do
+   
+    state = state |> Map.update!(:successor, fn _x -> pred_pid end)
+                  |> Map.update!(:succ_id, fn _x -> succ_id end)
+
+    GenServer.cast(pid, {:fix_fingers_new, max_search})
+    GenServer.cast(pid, {:fix_superVisorList})
+
+    {:noreply, state}
   end
 
 end
