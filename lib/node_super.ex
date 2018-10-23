@@ -98,7 +98,7 @@ defmodule NodeSuper do
       #    IO.puts("Fixing fingers for #{id}")
       #    IO.inspect(id)
       GenServer.cast(pid, {:fix_fingers_new, max_search})
-      #:timer.sleep(10)
+      :timer.sleep(5)
       #    IO.puts("Fixed fingers for #{id}")
     end)
   end
@@ -110,8 +110,7 @@ defmodule NodeSuper do
     |> Enum.each(fn item ->
       {id, pid, _, _} = item
       GenServer.cast(pid, {:fix_superVisorList})
-      :timer.sleep(10)
+      :timer.sleep(5)
     end)
-    :timer.sleep(20)
   end
 end

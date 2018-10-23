@@ -32,21 +32,28 @@ defmodule ChordNode do
     ##################################################################################################################################
     ## New Finger Table implementation Jinansh #######################################################################################
     ##################################################################################################################################
-    supervisorList = getemptySuperList(id,1) 
+    supervisorListIn = getemptySuperList(id,1,max) 
     fingerTablePopulate = %{}
     finger_new = get_empty_values_new(id, 1, max, fingerTablePopulate)
+
+    fingerNew = 
+      if(finger_new == %{}) do
+        %{1 => nil }
+      else
+        finger_new
+      end
 
     ##################################################################################################################################
     ## New Finger Table implementation Jinansh End ###################################################################################
     ##################################################################################################################################
 
-    state = %NodeStruct{id: id, keys: [], finger_table: fingers, parent_pid: parent}
+    #state = %NodeStruct{id: id, keys: [], finger_table: fingers, parent_pid: parent}
 
     ##################################################################################################################################
     ## New Finger Table implementation Jinansh #######################################################################################
     ##################################################################################################################################
 
-    state = %NodeStruct{id: id, keys: [], finger_table: fingers, parent_pid: parent, fingure_table_new: finger_new}
+    state = %NodeStruct{id: id, keys: [], finger_table: fingers, parent_pid: parent, fingure_table_new: fingerNew, supervisorList: supervisorListIn}
 
     ##################################################################################################################################
     ## New Finger Table implementation Jinansh End ###################################################################################
@@ -173,13 +180,16 @@ defmodule ChordNode do
     [{head_id, succ} | fix_fingers(tail, pid, key_list)]
   end
 
+  @doc """
+    This handle_call method is used to update the predecessor of a node in most cases it will be the new node that has join the network.
+  """
   def handle_cast({:yo_im_ur_new_predecessor, pid, id}, state) do
     GenServer.cast(state.successor, {:delete_these_keys, state.keys})
 
     new_state =
       unless state.predecessor == nil do
-        # REALLLYY? TRY storing the predecessor and successor ID in your state
-        # pred_id = GenServer.call(state.predecessor, :get_id)
+        
+        
         pred_id = state.pred_id
 
         {new_pred, new_pred_id} =
@@ -267,39 +277,6 @@ defmodule ChordNode do
     {:noreply, state}
   end
 
-  """
-    def handle_cast(:stablize_old, state) do
-      # IO.inspect(self())
-      suc_pid = state.successor
-
-      new_state =
-        unless suc_pid == self() do
-          pid = GenServer.call(suc_pid, :yo_give_me_your_predecessor)
-          # IO.inspect(suc_pid)
-
-          suc_pid =
-            cond do
-              pid == nil ->
-                GenServer.call(suc_pid, {:yo_im_ur_new_predecessor, self(), state.id})
-                suc_pid
-
-              pid != self() ->
-                GenServer.call(pid, {:yo_im_ur_new_predecessor, self(), state.id})
-                pid
-
-              true ->
-                suc_pid
-            end
-
-          state |> Map.update!(:successor, fn _ -> suc_pid end)
-        else
-          state
-        end
-
-      {:noreply, new_state}
-    end
-  """
-
   @doc """
     This handle_cast method is used to remove the keys that it's predecessor have.
   """
@@ -352,11 +329,14 @@ defmodule ChordNode do
         state
       else
         # succ_pid = state.successor
+
+        finger_table_for_find = Map.to_list(state.fingure_table_new)
+
         succ_pid =
           if(state.id < req_key) do
-            find_succ_after(req_key, state.finger_table, state.successor)
+            find_succ_after(req_key, finger_table_for_find, state.successor)
           else
-            find_succ_before(req_key, state.finger_table, state.successor)
+            find_succ_before(req_key, finger_table_for_find, state.successor)
           end
 
         forward_table = state.forward_table
@@ -422,35 +402,6 @@ defmodule ChordNode do
   end
 
   #####################################################################################
-  """
-    def handle_call({:new_predecessor_old, pred_pid}, _from, state) do
-      pred = state.predecessor
-
-      if pred == nil do
-        # IO.puts("OMGOMGGMOGMOGMMGOGMOMGOGMGOMGMOGMGOGMOGMOGMOGMGO")
-        #      #IO.inspect(self())
-      end
-
-      state = state |> Map.update!(:predecessor, fn _ -> pred_pid end)
-
-      #    new_succ =
-      #      if(state.successor == self()) do
-      #        pred_pid
-      #      else
-      #        state.successor
-      #      end
-      #
-      #    state = state |> Map.update!(:successor, fn _ -> new_succ end)
-
-      #    unless pred == self() do
-      # IO.puts("Stablizing on")
-      # IO.inspect(pred)
-      GenServer.cast(self(), :stablize)
-      #    end
-
-      {:reply, :ok, state}
-    end
-  """
 
   @doc """
     This handle_call method is used to join the new node in the network.
@@ -475,34 +426,6 @@ defmodule ChordNode do
       |> Map.update!(:succ_id, fn _ -> succ_id end)
 
     {:reply, :ok, state}
-  end
-
-  @doc """
-    This handle_call method is used to update the predecessor of a node in most cases it will be the new node that has join the network.
-  """
-  def handle_call({:yo_im_ur_new_predecessor_old, pid, id}, _from, state) do
-    GenServer.cast(state.successor, {:delete_these_keys, state.keys})
-
-    new_state =
-      #Jinansh ask Ashwin when is this case true.............................................................................................
-      unless state.predecessor == nil do
-        #Jinansh ask Ashwin where is thing used.............................................................................................
-        pred_id = GenServer.call(state.predecessor, :get_id)
-
-        new_pred =
-          cond do
-            pred_id < id and pred_id < state.id -> pid
-            pred_id > id and pred_id > state.id -> pid
-            pred_id == state.id -> pid
-            true -> state.predecessor
-          end
-
-        state |> Map.update!(:predecessor, fn _ -> new_pred end)
-      else
-        state |> Map.update!(:predecessor, fn _ -> pid end)
-      end
-
-    {:reply, :ok, new_state}
   end
 
   @doc """
@@ -556,10 +479,6 @@ defmodule ChordNode do
     end
   end
 
-  def handle_call(:get_id_old, _from, state) do
-    {:reply, state.id, state}
-  end
-
   @doc """
     This is a Genserver call mathod for the first node that is being created as part of our Chord Ring Formation
   """
@@ -595,7 +514,7 @@ defmodule ChordNode do
 
     new_state = state |> Map.update!(:fingure_table_new, fn _-> fingerTableUpdate end)
 
-    IO.inspect(new_state)
+    #IO.inspect(new_state)
 
     {:noreply,new_state}
   end
@@ -632,7 +551,6 @@ defmodule ChordNode do
   
     new_state = state |> Map.update!(:fingure_table_new, fn _-> fingerTableUpdate end)
     
-    #spawn the below method................................................................................
     fix_fingers_new(tail, pid, state.keys, self(), max_search)
     {:noreply, new_state}
   end
@@ -674,44 +592,72 @@ defmodule ChordNode do
   ############################################################################################################################
   ############################################################################################################################
 
-  def getemptySuperList(id,count) when count == 6 do
+  def getemptySuperList(id,count,max) when count == 6 do
     []
   end
 
-  def getemptySuperList(id,count) do
-    [{id+1,nil} | getemptySuperList(id+1,count+1)]
+  def getemptySuperList(id,count,max) do
+    if id == max do
+      id = 0 
+      [{id+1,nil} | getemptySuperList(id+1,count+1,max)]
+    else
+      [{id+1,nil} | getemptySuperList(id+1,count+1,max)]
+    end
+  end
+  
+  def middelManForpopulateSuperVisorList(supervisorList) do
+    [info | tail ] = supervisorList
+    {nextid, nextPid} = List.first(tail)
+    populateSuperVisorList(nextid,nextPid,tail)
   end
 
   def populateSuperVisorList(succPid,supervisorList) when supervisorList == [] do
     # Ask ashwin how to handle this .....................................
     IO.puts("Chord Ring Network is broken")
+    []
   end
 
-  def populateSuperVisorList(succPid,supervisorList) do
-    try do
-      succSuperVisorList = GenServer.call(succPid,{:getNextSuccSupervisorList})
-    catch
-      {{_,nextPid} | tail } = supervisorList
-      populateSuperVisorList(nextPid,tail)
-    end
-    succSuperVisorList
+  def populateSuperVisorList(succId, succPid, supervisorList) do
+    succSuperVisorList =
+      try do
+        GenServer.call(succPid,{:getNextSuccSupervisorList})
+        |> List.delete_at(4)
+        |> List.insert_at(0,{succId,succPid})
+      catch
+        :exit,_ -> middelManForpopulateSuperVisorList(supervisorList)
+      end
+   succSuperVisorList
   end
 
   def handle_cast({:fix_superVisorList}, state) do
     succId = state.succ_id
     succPid = state.successor
 
-    succSuperVisorList = populateSuperVisorList(succPid,state.supervisorList)
-    
-    supervisorList = List.delete_at(succSuperVisorList, 4)
-      |> List.insert_at(0,{succId,succPid})
-	
-    new_state = Map.update!(state.supervisorList, fn _ -> supervisorList end)
+    supervisorListUp = populateSuperVisorList(succId, succPid,state.supervisorList)
 
-    {:noreply, new_state}
+    if supervisorListUp == [] do
+      {:stop, :normal, state}
+    end
+
+    {newSuccId,newSuccPid} = List.first(supervisorListUp)
+    
+    state = state 
+      |> Map.update!(:supervisorList, fn _ -> supervisorListUp end)
+
+    state = state 
+      |> Map.update!(:successor, fn _ -> newSuccPid end)
+
+    state = state 
+      |> Map.update!(:succ_id, fn _ -> newSuccId end)
+
+
+    #IO.inspect(state)
+
+    {:noreply, state}
   end
 
   def handle_call({:getNextSuccSupervisorList},_from,state) do
     {:reply, state.supervisorList , state}
   end
+
 end

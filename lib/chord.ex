@@ -23,7 +23,7 @@ defmodule Chord do
     [head | tail] = list
     child = NodeSuper.start_child(head, n, self())
     ChordNode.join(head, child)
-    :timer.sleep(5)
+    :timer.sleep(50)
     # NodeSuper.stablize_all_children()
     # IO.gets("")
     #  NodeSuper.check_all_children()
@@ -46,25 +46,13 @@ defmodule Chord do
     # Node.spawn_link(Node.self(), NodeSuper.stablize_all_children())
     start_nodes(tail, n, n)
     IO.puts("started!!")
-    NodeSuper.fix_all_fingers()
+    #NodeSuper.fix_all_fingers()
+    NodeSuper.fix_all_fingers_new(n)
+    NodeSuper.fix_supervisorList()
+    :timer.sleep(20)
     IO.puts("fixed!!")
-    :timer.sleep(2000)
     #  NodeSuper.check_all_children()
     NodeSuper.send_messages(mess, n)
     receive_messages(0, 0)
-
-    ##################################################################################################################################
-    ## New Finger Table implementation Jinansh #######################################################################################
-    ##################################################################################################################################
-    
-    NodeSuper.fix_all_fingers_new(n)
-    NodeSuper.fix_supervisorList()
-
-    ##################################################################################################################################
-    ## New Finger Table implementation Jinansh End ###################################################################################
-    ##################################################################################################################################
-
-
-
   end
 end
