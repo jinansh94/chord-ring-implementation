@@ -248,13 +248,24 @@ defmodule ChordNode do
     {pid, id} =
       unless suc_pid == self() do
         # RISKYYYYYYY!! But I guess, a call here makes sense
-        GenServer.call(suc_pid, :yo_give_me_your_predecessor)
+        try do 
+          if Process.alive?(suc_pid) do
+            GenServer.call(suc_pid, :yo_give_me_your_predecessor)
+          else
+            {nil,nil}
+          end
+        catch
+          {exit,_} -> {nil,nil}
+        rescue 
+          e -> {nil,nil}
+        end
       else
         {state.predecessor, state.pred_id}
       end
 
     {succ_pid, new_id} =
       cond do
+        pid == nil and id == nil -> {nil,nil}
         #Jinansh Understand this from Ashwin please...............................................
         pid == nil and suc_pid != self() ->
           GenServer.cast(suc_pid, {:yo_im_ur_new_predecessor, self(), state.id})
@@ -268,15 +279,22 @@ defmodule ChordNode do
           {suc_pid, state.succ_id}
       end
 
-    # IO.puts("My new succ piD for #{state.id}")
-    # IO.inspect(suc_pid)
-    state =
+    if succ_pid == nil and new_id == nil do
+      GenServer.cast(self(), {:fix_superVisorList})
+      GenServer.cast(self(), :stablize)
+      {:noreply, state}
+    else   
+      state =
       state
       |> Map.update!(:successor, fn _ -> succ_pid end)
       |> Map.update!(:succ_id, fn _ -> new_id end)
 
-    # IO.puts("done stablizing #{state.id}")
-    {:noreply, state}
+      # IO.puts("done stablizing #{state.id}")
+      {:noreply, state}
+    end  
+    # IO.puts("My new succ piD for #{state.id}")
+    # IO.inspect(suc_pid)
+
   end
 
   @doc """
@@ -499,10 +517,10 @@ defmodule ChordNode do
     {:reply, :ok, state}
   end
 
-  def handle_call(:print_keys_unused, _from, state) do
+  def handle_call(:print_keys, _from, state) do
     id = state.id
     IO.puts("Printing #{id}")
-    IO.inspect(state.finger_table)
+    IO.inspect(state)
     {:reply, :ok, state}
   end
 
@@ -609,8 +627,13 @@ defmodule ChordNode do
   
   def middelManForpopulateSuperVisorList(supervisorList) do
     [info | tail ] = supervisorList
-    {nextid, nextPid} = List.first(tail)
-    populateSuperVisorList(nextid,nextPid,tail)
+    if tail == [] do
+      IO.puts("Chord Ring Network is broken")
+      []
+    else
+      {nextid, nextPid} = List.first(tail)
+      populateSuperVisorList(nextid,nextPid,tail)
+    end
   end
 
   def populateSuperVisorList(succPid,supervisorList) when supervisorList == [] do
@@ -638,24 +661,30 @@ defmodule ChordNode do
     supervisorListUp = populateSuperVisorList(succId, succPid,state.supervisorList)
 
     if supervisorListUp == [] do
+      #IO.puts("State is")
+      #IO.inspect(state)
       {:stop, :normal, state}
+
+    else
+      {newSuccId,newSuccPid} = List.first(supervisorListUp)
+    
+      state = state 
+        |> Map.update!(:supervisorList, fn _ -> supervisorListUp end)
+  
+      state = state 
+        |> Map.update!(:successor, fn _ -> newSuccPid end)
+  
+      state = state 
+        |> Map.update!(:succ_id, fn _ -> newSuccId end)
+  
+  
+      #IO.inspect(state)
+  
+      {:noreply, state}
+
     end
 
-    {newSuccId,newSuccPid} = List.first(supervisorListUp)
-    
-    state = state 
-      |> Map.update!(:supervisorList, fn _ -> supervisorListUp end)
-
-    state = state 
-      |> Map.update!(:successor, fn _ -> newSuccPid end)
-
-    state = state 
-      |> Map.update!(:succ_id, fn _ -> newSuccId end)
-
-
-    #IO.inspect(state)
-
-    {:noreply, state}
+  
   end
 
   def handle_call({:getNextSuccSupervisorList},_from,state) do
@@ -681,11 +710,11 @@ defmodule ChordNode do
 
   def handle_cast({:vol_give_pred,succ_pid,succ_id,max_search}, state) do
    
-    state = state |> Map.update!(:successor, fn _x -> pred_pid end)
+    state = state |> Map.update!(:successor, fn _x -> succ_pid end)
                   |> Map.update!(:succ_id, fn _x -> succ_id end)
 
-    GenServer.cast(pid, {:fix_fingers_new, max_search})
-    GenServer.cast(pid, {:fix_superVisorList})
+    GenServer.cast(self(), {:fix_fingers_new, max_search})
+    GenServer.cast(self(), {:fix_superVisorList})
 
     {:noreply, state}
   end

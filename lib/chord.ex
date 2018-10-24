@@ -9,6 +9,7 @@ defmodule Chord do
       {:hop_count, hop_count} -> receive_messages(total + 1, count + hop_count)
     after
       10_000 -> IO.puts("Average number of hops: #{count / total}")
+      NodeSuper.check_all_children()
     end
   end
 
@@ -53,11 +54,22 @@ defmodule Chord do
     start_nodes(tail, n, 1)
     #IO.puts("started!!")
     #NodeSuper.fix_all_fingers()
+    
     NodeSuper.fix_all_fingers_new(n)
     NodeSuper.fix_supervisorList()
+
     :timer.sleep(20)
+
+    # To test the voluntary terminating a child please uncomment the code below
+    #spawn_link(fn -> NodeSuper.vol_die(n,98) end)
+
+    # To test the permanent terminating a child please uncomment the code below
+    spawn_link(fn -> NodeSuper.perm_die(n,2) end)
+    
     #IO.puts("fixed!!")
+    
     #  NodeSuper.check_all_children()
+    :timer.sleep(1000)
     NodeSuper.send_messages(mess, n)
     receive_messages(0, 0)
 
